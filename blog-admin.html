@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog API — Administration</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --bg3: #1a2235;
+    --surface: #1e2d45;
+    --surface2: #243352;
+    --accent: #4f8ef7;
+    --accent2: #7c3aed;
+    --accent3: #06d6a0;
+    --accent4: #f97316;
+    --danger: #ef4444;
+    --text: #f0f4ff;
+    --text2: #94a3b8;
+    --text3: #4b5e7a;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --glow: 0 0 40px rgba(79,142,247,0.15);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BACKGROUND GRID */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* GLOW ORBS */
+  .orb1, .orb2 {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb1 { width: 500px; height: 500px; background: var(--accent); top: -200px; left: -150px; }
+  .orb2 { width: 400px; height: 400px; background: var(--accent2); bottom: -150px; right: -100px; }
+
+  /* LAYOUT */
+  .layout { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 260px;
+    background: rgba(17,24,39,0.8);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+  }
+  .sidebar-logo {
+    padding: 1.8rem 1.5rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    color: white;
+    margin-bottom: 10px;
+    box-shadow: 0 0 20px rgba(79,142,247,0.3);
+  }
+  .logo-text { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; color: var(--text); }
+  .logo-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  .sidebar-nav { padding: 1rem 0.8rem; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .nav-section-label {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.1em;
+    color: var(--text3); text-transform: uppercase;
+    padding: 0.8rem 0.8rem 0.4rem;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text2);
+    transition: all 0.2s;
+    border: 1px solid transparent;
+    text-decoration: none;
+    background: none;
+    width: 100%; text-align: left; font-family: 'DM Sans', sans-serif;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); border-color: var(--border); }
+  .nav-item.active {
+    background: rgba(79,142,247,0.1);
+    color: var(--accent);
+    border-color: rgba(79,142,247,0.2);
+  }
+  .nav-icon { width: 18px; height: 18px; opacity: 0.8; flex-shrink: 0; }
+
+  .sidebar-status {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent3); box-shadow: 0 0 8px var(--accent3); animation: pulse 2s infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+  .status-info { }
+  .status-label { font-size: 12px; color: var(--text2); }
+  .status-url { font-family: 'DM Sans', monospace; font-size: 11px; color: var(--accent3); }
+
+  /* MAIN */
+  .main { margin-left: 260px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* TOPBAR */
+  .topbar {
+    background: rgba(10,14,26,0.7);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar-left { display: flex; flex-direction: column; }
+  .topbar-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: var(--text); }
+  .topbar-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+  .search-wrap {
+    position: relative;
+    display: flex; align-items: center;
+  }
+  .search-icon { position: absolute; left: 12px; width: 14px; height: 14px; color: var(--text3); }
+  .search-input {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 14px 8px 36px;
+    font-size: 13px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    width: 220px;
+    transition: border-color 0.2s;
+  }
+  .search-input::placeholder { color: var(--text3); }
+  .search-input:focus { border-color: var(--accent); }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: 10px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+  }
+  .btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #6366f1);
+    color: white; border-color: transparent;
+    box-shadow: 0 4px 15px rgba(79,142,247,0.25);
+  }
+  .btn-primary:hover { box-shadow: 0 6px 20px rgba(79,142,247,0.4); transform: translateY(-1px); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+  .btn-danger { color: #fca5a5; border-color: rgba(239,68,68,0.3); }
+  .btn-danger:hover { background: rgba(239,68,68,0.1); }
+
+  /* CONTENT */
+  .content { padding: 2rem; flex: 1; }
+
+  /* STATS GRID */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 16px; margin-bottom: 2rem; }
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.4rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .stat-card.c1::before { background: linear-gradient(90deg, var(--accent), transparent); }
+  .stat-card.c2::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+  .stat-card.c3::before { background: linear-gradient(90deg, var(--accent3), transparent); }
+  .stat-card.c4::before { background: linear-gradient(90deg, var(--accent4), transparent); }
+  .stat-icon { font-size: 22px; margin-bottom: 10px; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700; color: var(--text); }
+  .stat-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+  /* FILTERS */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .section-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600; color: var(--text); }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .filter-pill {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .filter-pill:hover { border-color: var(--border2); color: var(--text); }
+  .filter-pill.active { background: rgba(79,142,247,0.12); color: var(--accent); border-color: rgba(79,142,247,0.3); }
+
+  /* TABLE */
+  .table-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .table-head {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 120px 100px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+  .th { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+  .article-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 120px 100px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .article-row:last-child { border-bottom: none; }
+  .article-row:hover { background: rgba(255,255,255,0.03); }
+  .article-title-cell { display: flex; align-items: center; gap: 12px; }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; flex-shrink: 0;
+  }
+  .a-blue { background: rgba(79,142,247,0.15); color: var(--accent); }
+  .a-purple { background: rgba(124,58,237,0.15); color: #a78bfa; }
+  .a-green { background: rgba(6,214,160,0.15); color: var(--accent3); }
+  .a-orange { background: rgba(249,115,22,0.15); color: var(--accent4); }
+  .a-red { background: rgba(239,68,68,0.15); color: #f87171; }
+  .article-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .article-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .cell-text { font-size: 13px; color: var(--text2); }
+  .cell-date { font-size: 12px; color: var(--text3); }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 500;
+  }
+  .b-tech { background: rgba(79,142,247,0.12); color: #93c5fd; border: 1px solid rgba(79,142,247,0.2); }
+  .b-doc { background: rgba(6,214,160,0.12); color: #6ee7b7; border: 1px solid rgba(6,214,160,0.2); }
+  .b-sec { background: rgba(249,115,22,0.12); color: #fdba74; border: 1px solid rgba(249,115,22,0.2); }
+  .b-db { background: rgba(124,58,237,0.12); color: #c4b5fd; border: 1px solid rgba(124,58,237,0.2); }
+
+  .row-actions { display: flex; gap: 6px; }
+  .icon-btn {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    color: var(--text3);
+    transition: all 0.2s;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); border-color: var(--border2); }
+  .icon-btn.del:hover { background: rgba(239,68,68,0.1); color: #f87171; border-color: rgba(239,68,68,0.3); }
+
+  /* MODAL */
+  .modal-bg {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 2rem;
+    width: 520px; max-width: 95%;
+    box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp { from{opacity:0;transform:translateY(20px);} to{opacity:1;transform:translateY(0);} }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); }
+  .modal-close { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .modal-close:hover { background: rgba(255,255,255,0.06); }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; display: block; }
+  .form-label .req { color: var(--accent); margin-left: 2px; }
+  .form-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px; color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,142,247,0.1); }
+  .form-input::placeholder { color: var(--text3); }
+  textarea.form-input { resize: vertical; min-height: 90px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+
+  /* ENDPOINT VIEW */
+  .ep-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .ep-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.2rem;
+    transition: border-color 0.2s;
+  }
+  .ep-card:hover { border-color: var(--border2); }
+  .ep-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .method-badge {
+    padding: 3px 10px; border-radius: 6px;
+    font-size: 11px; font-weight: 700; font-family: monospace;
+    flex-shrink: 0;
+  }
+  .m-get { background: rgba(6,214,160,0.12); color: var(--accent3); border: 1px solid rgba(6,214,160,0.2); }
+  .m-post { background: rgba(79,142,247,0.12); color: var(--accent); border: 1px solid rgba(79,142,247,0.2); }
+  .m-put { background: rgba(249,115,22,0.12); color: var(--accent4); border: 1px solid rgba(249,115,22,0.2); }
+  .m-del { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+  .ep-path { font-family: monospace; font-size: 13px; color: var(--text); }
+  .ep-desc { font-size: 12px; color: var(--text3); }
+  .code-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.8;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 13px; font-weight: 500;
+    display: none; z-index: 300;
+    animation: fadeIn 0.25s ease;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+  .toast.show { display: block; }
+  .toast.success { background: rgba(6,214,160,0.15); color: var(--accent3); border: 1px solid rgba(6,214,160,0.3); }
+  .toast.error { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+
+  /* EMPTY STATE */
+  .empty { text-align: center; padding: 3rem; color: var(--text3); }
+  .empty-icon { font-size: 40px; margin-bottom: 1rem; opacity: 0.4; }
+
+  .count-badge {
+    background: rgba(79,142,247,0.12); color: var(--accent);
+    border: 1px solid rgba(79,142,247,0.2);
+    padding: 2px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 500;
+  }
+</style>
+</head>
+<body>
+<div class="orb1"></div>
+<div class="orb2"></div>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">BA</div>
+      <div class="logo-text">Blog API</div>
+      <div class="logo-sub">Panneau d'administration</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <button class="nav-item active" onclick="showView('articles')">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Articles
+      </button>
+      <button class="nav-item" onclick="showView('endpoints')">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        Endpoints API
+      </button>
+      <button class="nav-item" onclick="showView('schema')">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7z"/></svg>
+        Schema JSON
+      </button>
+    </nav>
+    <div class="sidebar-status">
+      <div class="status-dot"></div>
+      <div class="status-info">
+        <div class="status-label">Serveur actif</div>
+        <div class="status-url">localhost:3000</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title" id="view-title">Gestion des Articles</div>
+        <div class="topbar-sub" id="view-sub">Base de données · blog_db</div>
+      </div>
+      <div class="topbar-right">
+        <div class="search-wrap">
+          <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input class="search-input" id="search" placeholder="Rechercher un article..." oninput="render()">
+        </div>
+        <button class="btn btn-primary" onclick="openModal()">+ Nouvel article</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ARTICLES VIEW -->
+      <div id="v-articles">
+        <div class="stats-grid">
+          <div class="stat-card c1">
+            <div class="stat-icon">📝</div>
+            <div class="stat-value" id="s-total">5</div>
+            <div class="stat-label">Total articles</div>
+          </div>
+          <div class="stat-card c2">
+            <div class="stat-icon">🗂</div>
+            <div class="stat-value">4</div>
+            <div class="stat-label">Catégories</div>
+          </div>
+          <div class="stat-card c3">
+            <div class="stat-icon">👤</div>
+            <div class="stat-value">3</div>
+            <div class="stat-label">Auteurs</div>
+          </div>
+          <div class="stat-card c4">
+            <div class="stat-icon">🔗</div>
+            <div class="stat-value">6</div>
+            <div class="stat-label">Endpoints actifs</div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="section-title">Articles</span>
+            <span class="count-badge" id="count-label">5 articles</span>
+          </div>
+        </div>
+
+        <div class="filters" id="filters">
+          <button class="filter-pill active" onclick="setFilter('Tous')">Tous</button>
+          <button class="filter-pill" onclick="setFilter('Technologie')">Technologie</button>
+          <button class="filter-pill" onclick="setFilter('Base de données')">Base de données</button>
+          <button class="filter-pill" onclick="setFilter('Documentation')">Documentation</button>
+          <button class="filter-pill" onclick="setFilter('Sécurité')">Sécurité</button>
+        </div>
+
+        <div class="table-wrap">
+          <div class="table-head">
+            <div class="th">Titre</div>
+            <div class="th">Auteur</div>
+            <div class="th">Catégorie</div>
+            <div class="th">Date</div>
+            <div class="th">Actions</div>
+          </div>
+          <div id="article-list"></div>
+        </div>
+      </div>
+
+      <!-- ENDPOINTS VIEW -->
+      <div id="v-endpoints" style="display:none;">
+        <div class="ep-grid">
+          <div class="ep-card">
+            <div class="ep-row"><span class="method-badge m-post">POST</span><span class="ep-path">/api/articles</span></div>
+            <div class="ep-desc">Crée un nouvel article et retourne l'objet avec son ID généré.</div>
+          </div>
+          <div class="ep-card">
+            <div class="ep-row"><span class="method-badge m-get">GET</span><span class="ep-path">/api/articles</span></div>
+            <div class="ep-desc">Récupère la liste complète. Filtrable par ?categorie= ?auteur= ?date=</div>
+          </div>
+          <div class="ep-card">
+            <div class="ep-row"><span class="method-badge m-get">GET</span><span class="ep-path">/api/articles/:id</span></div>
+            <div class="ep-desc">Récupère un article spécifique par son identifiant unique.</div>
+          </div>
+          <div class="ep-card">
+            <div class="ep-row"><span class="method-badge m-put">PUT</span><span class="ep-path">/api/articles/:id</span></div>
+            <div class="ep-desc">Met à jour le titre, contenu, catégorie ou tags d'un article.</div>
+          </div>
+          <div class="ep-card">
+            <div class="ep-row"><span class="method-badge m-del">DEL</span><span class="ep-path">/api/articles/:id</span></div>
+            <div class="ep-desc">Supprime définitivement un article via son identifiant.</div>
+          </div>
+          <div class="ep-card">
+            <div class="ep-row"><span class="method-badge m-get">GET</span><span class="ep-path">/api/articles/search</span></div>
+            <div class="ep-desc">Recherche plein texte dans le titre et le contenu. ?query=texte</div>
+          </div>
+        </div>
+        <div style="margin-top:1.5rem;">
+          <div class="section-title" style="margin-bottom:1rem;">Codes de réponse HTTP</div>
+          <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;">
+            <div class="ep-card" style="text-align:center;"><div style="font-size:20px;font-weight:700;color:#93c5fd;">200</div><div style="font-size:11px;color:var(--text3);margin-top:4px;">OK</div></div>
+            <div class="ep-card" style="text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--accent3);">201</div><div style="font-size:11px;color:var(--text3);margin-top:4px;">Créé</div></div>
+            <div class="ep-card" style="text-align:center;"><div style="font-size:20px;font-weight:700;color:var(--accent4);">400</div><div style="font-size:11px;color:var(--text3);margin-top:4px;">Bad Request</div></div>
+            <div class="ep-card" style="text-align:center;"><div style="font-size:20px;font-weight:700;color:#f87171;">404</div><div style="font-size:11px;color:var(--text3);margin-top:4px;">Not Found</div></div>
+            <div class="ep-card" style="text-align:center;"><div style="font-size:20px;font-weight:700;color:#ef4444;">500</div><div style="font-size:11px;color:var(--text3);margin-top:4px;">Server Error</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCHEMA VIEW -->
+      <div id="v-schema" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <div class="section-title" style="margin-bottom:1rem;">Structure Article (JSON)</div>
+            <div class="code-block">{
+  "id": 1,
+  "titre": "Introduction à Node.js",
+  "contenu": "Node.js est un environnement...",
+  "auteur": "Wandji Miranda Brunelle",
+  "date_publication": "2026-03-22T10:00:00Z",
+  "categorie": "Technologie",
+  "tags": "nodejs, express, api",
+  "date_creation": "2026-03-22T10:00:00Z",
+  "date_modification": "2026-03-22T10:00:00Z"
+}</div>
+          </div>
+          <div>
+            <div class="section-title" style="margin-bottom:1rem;">Réponse succès</div>
+            <div class="code-block">{
+  "success": true,
+  "message": "Article créé avec succès.",
+  "data": { ... }
+}
+
+// Liste
+{
+  "success": true,
+  "count": 5,
+  "data": [ ... ]
+}
+
+// Erreur
+{
+  "success": false,
+  "message": "Article introuvable."
+}</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Nouvel article</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Titre <span class="req">*</span></label>
+      <input class="form-input" id="f-titre" placeholder="Titre de l'article">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Contenu <span class="req">*</span></label>
+      <textarea class="form-input" id="f-contenu" placeholder="Contenu de l'article..."></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Auteur <span class="req">*</span></label>
+        <input class="form-input" id="f-auteur" placeholder="Nom de l'auteur" value="Wandji Miranda Brunelle">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Catégorie <span class="req">*</span></label>
+        <input class="form-input" id="f-categorie" placeholder="Ex: Technologie">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tags</label>
+      <input class="form-input" id="f-tags" placeholder="nodejs, express, mysql">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="saveArticle()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const avatarColors = ['a-blue','a-purple','a-green','a-orange','a-red'];
+const badgeMap = {"Technologie":"b-tech","Documentation":"b-doc","Sécurité":"b-sec","Base de données":"b-db"};
+let articles = [
+  {id:1,titre:"Introduction à Node.js",auteur:"Jean Dupont",categorie:"Technologie",tags:"nodejs, javascript, backend",date_publication:"2024-01-15",contenu:"Node.js est un environnement d'exécution JavaScript côté serveur..."},
+  {id:2,titre:"Les bases de MySQL",auteur:"Marie Martin",categorie:"Base de données",tags:"mysql, sql, database",date_publication:"2024-01-20",contenu:"MySQL est un système de gestion de bases de données..."},
+  {id:3,titre:"Express.js : Framework minimaliste",auteur:"Jean Dupont",categorie:"Technologie",tags:"express, nodejs, framework",date_publication:"2024-02-01",contenu:"Express.js est un framework web minimaliste et flexible..."},
+  {id:4,titre:"Swagger et la documentation d'API",auteur:"Alice Bernard",categorie:"Documentation",tags:"swagger, openapi, documentation",date_publication:"2024-02-10",contenu:"Une bonne documentation d'API est essentielle..."},
+  {id:5,titre:"Sécuriser une API REST avec JWT",auteur:"Marie Martin",categorie:"Sécurité",tags:"jwt, securite, authentification",date_publication:"2024-02-15",contenu:"La sécurité des APIs est un sujet critique..."},
+];
+let activeFilter = 'Tous';
+let editId = null;
+let authorColors = {};
+let colorIdx = 0;
+
+function getAuthorColor(name){
+  if(!authorColors[name]) authorColors[name] = avatarColors[colorIdx++ % avatarColors.length];
+  return authorColors[name];
+}
+function initials(name){ return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+function getBadge(cat){ return badgeMap[cat]||'b-tech'; }
+
+function render(){
+  const q = document.getElementById('search').value.toLowerCase();
+  const list = articles.filter(a=>{
+    const mf = activeFilter==='Tous' || a.categorie===activeFilter;
+    const ms = !q || a.titre.toLowerCase().includes(q) || a.contenu.toLowerCase().includes(q) || a.auteur.toLowerCase().includes(q);
+    return mf && ms;
+  });
+  document.getElementById('count-label').textContent = list.length+' article'+(list.length>1?'s':'');
+  document.getElementById('s-total').textContent = articles.length;
+  if(list.length===0){
+    document.getElementById('article-list').innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><div>Aucun article trouvé</div></div>';
+    return;
+  }
+  document.getElementById('article-list').innerHTML = list.map(a=>`
+    <div class="article-row">
+      <div class="article-title-cell">
+        <div class="avatar ${getAuthorColor(a.auteur)}">${initials(a.auteur)}</div>
+        <div>
+          <div class="article-name">${a.titre}</div>
+          <div class="article-sub">${a.tags}</div>
+        </div>
+      </div>
+      <div class="cell-text">${a.auteur}</div>
+      <div><span class="badge ${getBadge(a.categorie)}">${a.categorie}</span></div>
+      <div class="cell-date">${a.date_publication}</div>
+      <div class="row-actions">
+        <button class="icon-btn" title="Modifier" onclick="editArticle(${a.id})">✏</button>
+        <button class="icon-btn del" title="Supprimer" onclick="deleteArticle(${a.id})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function setFilter(f){
+  activeFilter = f;
+  document.querySelectorAll('.filter-pill').forEach(b=>b.classList.toggle('active', b.textContent.trim()===f||(f==='Tous'&&b.textContent.trim()==='Tous')));
+  render();
+}
+
+function showView(v){
+  ['articles','endpoints','schema'].forEach(n=>{
+    document.getElementById('v-'+n).style.display = n===v?'block':'none';
+  });
+  document.querySelectorAll('.nav-item').forEach((b,i)=>{
+    b.classList.toggle('active', (v==='articles'&&i===0)||(v==='endpoints'&&i===1)||(v==='schema'&&i===2));
+  });
+  const titles = {articles:'Gestion des Articles', endpoints:'Documentation des Endpoints', schema:'Schéma JSON de l\'API'};
+  const subs = {articles:'Base de données · blog_db', endpoints:'Node.js · Express · MySQL', schema:'Structure des données · OpenAPI 3.0'};
+  document.getElementById('view-title').textContent = titles[v];
+  document.getElementById('view-sub').textContent = subs[v];
+}
+
+function openModal(){
+  editId=null;
+  document.getElementById('modal-title').textContent='Nouvel article';
+  ['titre','contenu','categorie','tags'].forEach(f=>document.getElementById('f-'+f).value='');
+  document.getElementById('f-auteur').value='Wandji Miranda Brunelle';
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+function editArticle(id){
+  const a=articles.find(x=>x.id===id); if(!a) return;
+  editId=id;
+  document.getElementById('modal-title').textContent='Modifier l\'article #'+id;
+  document.getElementById('f-titre').value=a.titre;
+  document.getElementById('f-contenu').value=a.contenu;
+  document.getElementById('f-auteur').value=a.auteur;
+  document.getElementById('f-categorie').value=a.categorie;
+  document.getElementById('f-tags').value=a.tags;
+  document.getElementById('modal').classList.add('open');
+}
+function deleteArticle(id){
+  articles=articles.filter(a=>a.id!==id);
+  render(); showToast('Article supprimé avec succès','success');
+}
+function saveArticle(){
+  const titre=document.getElementById('f-titre').value.trim();
+  const contenu=document.getElementById('f-contenu').value.trim();
+  const auteur=document.getElementById('f-auteur').value.trim();
+  const categorie=document.getElementById('f-categorie').value.trim();
+  const tags=document.getElementById('f-tags').value.trim();
+  if(!titre||!contenu||!auteur||!categorie){ showToast('Champs obligatoires manquants','error'); return; }
+  if(editId){
+    Object.assign(articles.find(x=>x.id===editId),{titre,contenu,auteur,categorie,tags});
+    showToast('Article mis à jour avec succès','success');
+  } else {
+    const newId=Math.max(...articles.map(a=>a.id))+1;
+    articles.push({id:newId,titre,contenu,auteur,categorie,tags,date_publication:new Date().toISOString().slice(0,10)});
+    showToast('Article créé — ID: '+newId,'success');
+  }
+  closeModal(); render();
+}
+function showToast(msg, type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+document.getElementById('modal').addEventListener('click',e=>{ if(e.target===document.getElementById('modal')) closeModal(); });
+render();
+</script>
+</body>
+</html>
